@@ -1,7 +1,7 @@
 from tqdm import tqdm
 from feature import RD
-from embedding import DG,RE
-from Signal import LoadData, LoadTestData, DTree, SVM, validate,SVC
+from embedding import DG,RE, LoadData, LoadTestData
+from Signal import DTree, SVM, validate,SVC
 from util import unify
 
 import pandas as pd
@@ -74,7 +74,7 @@ def BoostingSet(Reviews, Labels, Weights):
     
     return NR, NL
 
-def AdaBoost(X, Y, TX, algorithm='SVM', num=3):
+def AdaBoost(X, Y, TX, algorithm='SVM', num=3, TreeDepth=1000):
     BA = []
     BB = []
     Ans = []
@@ -93,6 +93,8 @@ def AdaBoost(X, Y, TX, algorithm='SVM', num=3):
         SW.append(1.0/st)
     
     belta = 1.0
+    tree_depth = 1000
+    
     LA = [] #last iteration's ans
     for i in range(0, st):
         LA.append(0)
@@ -100,14 +102,15 @@ def AdaBoost(X, Y, TX, algorithm='SVM', num=3):
     for i in range(0, num):
         print("Translate AdaBoost Iteration No.%d"%(i+1))
         #print(SW)
-        NX,NY = BoostingSet(X, Y, SW)
+        if (algorithm == 'SVM'):
+            NX,NY = BoostingSet(X, Y, SW)
         #print(SW)
         #Train Weighted Classifier
         clf = None
         if (algorithm == 'SVM'):
             clf = SVM(NX, NY)
         else:
-            clf = DTree(NX, NY)
+            clf = DTree(X, Y, SW, TreeDepth)
         
         #Make a prediction
         LA = clf.predict(X)
@@ -167,13 +170,24 @@ if __name__ == "__main__":
     n = int(sys.argv[5])
     ensemble = sys.argv[6]
     mode = sys.argv[7]
+    
+    sys_num = 7
     if (mode == 'test'):
-        output_file = sys.argv[8]
+        sys_num += 1
+        output_file = sys.argv[sys_num]
     train_num = -1 #-1 means take all sample to train (including the validation set)
     val_num = 500
+    
     if (mode == 'validation'):
-        train_num = int(sys.argv[8])
-        val_num = int(sys.argv[9])
+        sys_num += 1
+        train_num = int(sys.argv[sys_num])
+        sys_num += 1
+        val_num = int(sys.argv[sys_num])
+    tree_depth = 1000
+    
+    if (algorithm == 'DTree'):
+        sys_num += 1
+        tree_depth = int(sys.argv[sys_num])
 
     ts = 0     #train set start
     te = train_num    #train set end
@@ -199,7 +213,7 @@ if __name__ == "__main__":
     if (ensemble == "Bagging"):
         Ans = Bagging(X, Y, TX, algorithm, n)
     if (ensemble == "Boosting"):
-        Ans = AdaBoost(X, Y, TX, algorithm, n)
+        Ans = AdaBoost(X, Y, TX, algorithm, n, tree_depth)
     
     if (mode == 'validation'):
         rate, rmse = validate(Ans, V_Y)

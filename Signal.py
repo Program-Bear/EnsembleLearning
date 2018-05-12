@@ -3,50 +3,22 @@ from feature import RD
 
 import pandas as pd
 from embedding import DG
-from embedding import RE
+from embedding import RE, LoadData, LoadTestData
 from sklearn import tree
 from sklearn import svm
 import sys
 import math
 
-def LoadData(file_name,dic,start,end): #Load Traing Data
-    #assert(start <= end)
-    Labels = []
-    Reviews = []
-    d = pd.read_csv(file_name)[start:end]
-    label = list(d['label'])
-    reviews = list(d['review'])
-    print("Loading Label..")
-    for i in tqdm(label):
-        Labels.append(int(i))
-    
-    print("Loading Review..")
-    Reviews = RE(reviews,dic)
-    
-    #Reviews = RD(Reviews, Labels, 2000)
-
-    return Reviews,Labels
-
-def LoadTestData(file_name,dic): #Load Test Data
-    Labels = []
-    Reviews = []
-    d = pd.read_csv(file_name)
-    reviews = d['review']
-    print("Loading Testing Review..")
-    Reviews = RE(reviews,dic)
-    
-    #Reviews = RD(Reviews, Labels, 2000)
-    
-    return Reviews
-
 def DTree(Reviews, Labels, sw=None, Deep=None): #Decision Tree
+    
     clf = tree.DecisionTreeClassifier(max_depth=Deep)
+    print("DTree max depth %d" % clf.get_params()['max_depth'])
     
     print("Start DTree training...")
     clf = clf.fit(Reviews,Labels,sample_weight=sw)
     print("End DTree training...")
 
-    print("DTree depth: %d" % clf.n_features_)
+    #print("DTree depth: %d" % clf.n_features_)
 
     return clf
 
