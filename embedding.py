@@ -21,10 +21,9 @@ def RE(review,dic): #Review Embedding
     print("dim: %d"%dim)
     
     Embeddings = []
-    z = [0 for i in range(0,dim)]
     print("Calculate embedding")
     for i in tqdm(range(0,total_num)):
-        embedding = [0 for i in range(0,dim)]
+        embedding = [0 for j in range(0,dim)]
         r = review[i].split()
         for w in r:
             try:
