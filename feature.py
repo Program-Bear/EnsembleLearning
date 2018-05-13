@@ -5,7 +5,9 @@ from sklearn.feature_selection import SelectFromModel
 from sklearn import tree
 from embedding import DG,RE,DO
 from embedding import LoadData, LoadTestData
+from util import MutualInfo,dic2sortedlist
 import numpy as np
+import sys
 
 def RD(Raw, Label, Dim):
     raw_dim = len(Raw[0])
@@ -70,21 +72,67 @@ def L1BasedFeatureSelection(X, Y):
     print("Select %d features from %d"%(new, raw))
     return features
 
-def SelfFeatureSelection():
-    pass
+def SetUpMutualInfoDic(X, Y, r_dic):
+    n_dic = {}
+    f_dic = {}
+    print("Start Self Defined Feature Selection")
+    
+    Score = list(MutualInfo(X,Y))
+
+    print("End Self Defined Feature Selection")
+
+    for i in range(0, len(Score)):
+        n_dic[i] = Score[i]
+        key = ''
+        try:
+            si = str(i)
+            key = r_dic[si]
+        except:
+            print("Key not found: %d"%i)
+            continue
+        f_dic[key] = Score[i]
+
+    return n_dic, f_dic
+
+def SelfFeatureSelection(n_dic, num=2000):
+    features = []
+#   print("Start Self Defined Feature Selection")
+    
+
+#   print("End Self Defined Feature Selection")
+    lst = dic2sortedlist(n_dic)
+    raw = len(lst)
+        
+    for i in range(0, num):
+        features.append(int(lst[i][0]))
+
+    
+    return features
     
 if __name__ == "__main__":
     dic = DG('dic.txt')
     
     r_dic = DG('r_dic.txt')
     
-    X, Y = LoadData('exp2.train.csv',dic,0,-1)
+    i_dic = DG('my_num_info.txt')
+    
+    #X, Y = LoadData('exp2.train.csv',dic,0,-1)
+
+    #num = int(sys.argv[1])
+    #output_dic = sys.argv[2]
     #Feature = TreeBasedFeatureSelection(X,Y)
-    Feature = L1BasedFeatureSelection(X,Y)
+    #Feature = L1BasedFeatureSelection(X,Y)
+    num = 2000
+    Feature = SelfFeatureSelection(i_dic, num)
     #print(Feature)
     
-    new_dic = FD(r_dic, Feature)
-    DO(new_dic, 'SvmDic.txt')
+    num_dic = FD(r_dic, Feature)
+    #num_dic,feature_dic = SetUpMutualInfoDic(X,Y,r_dic)
+
+    DO(num_dic, 'my_dic.txt')
+
+    #DO(feature_dic, 'my_feature_info.txt')
+    #DO(num_dic, 'my_num_info.txt')
     
     #new_dic = FD(r_dic, [4,19,20,33])
     #print(new_dic)

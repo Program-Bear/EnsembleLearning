@@ -6,13 +6,15 @@ from embedding import DG
 from embedding import RE, LoadData, LoadTestData
 from sklearn import tree
 from sklearn import svm
+from sklearn.neighbors import KNeighborsClassifier
+
 import sys
 import math
 
 def DTree(Reviews, Labels, sw=None, Deep=None): #Decision Tree
     
     clf = tree.DecisionTreeClassifier(max_depth=Deep)
-    print("DTree max depth %d" % clf.get_params()['max_depth'])
+    #print("DTree max depth %d" % clf.get_params()['max_depth'])
     
     print("Start DTree training...")
     clf = clf.fit(Reviews,Labels,sample_weight=sw)
@@ -41,6 +43,14 @@ def SVC(Reviews, Labels, sw=None):
 
     return clf
 
+def KNN(Reviews, Lables, sw=None):
+    neigh = KNeighborsClassifier(n_neighbors=3)
+    
+    print("Start KNN training...")
+    neigh.fit(Reviews, Lables)
+    print("End KNN training...")
+    
+    return neigh
 
 def validate(Ans, Real):
     correct = 0.0
@@ -95,6 +105,8 @@ if __name__ == "__main__":
         Ans = SVM(X, Y).predict(TX)
     if (algorithm == "DTree"):
         Ans = DTree(X, Y).predict(TX)
+    if (algorithm == 'KNN'):
+        Ans = KNN(X,Y).predict(TX)
 
     if (mode == 'validation'):
         rate, rmse = validate(Ans, V_Y)

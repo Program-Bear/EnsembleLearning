@@ -1,9 +1,10 @@
 from tqdm import tqdm
 from feature import RD
 from embedding import DG,RE, LoadData, LoadTestData
-from Signal import DTree, SVM, validate,SVC
+from Signal import DTree, SVM, validate,SVC, KNN
 from util import unify
 
+import argparse
 import pandas as pd
 import random
 import sys
@@ -35,8 +36,10 @@ def Bagging(X, Y, TX, algorithm='SVM', num=3):
         clf = None
         if (algorithm == 'SVM'):
             clf = SVM(NX, NY)
-        else:
+        if (algorithm == 'DTree'):
             clf = DTree(NX,NY)
+        if (algorithm == 'KNN'):
+            clf = KNN(NX,NY)
         BA.append(clf.predict(TX))
     
     print("Calculate Answer")
@@ -56,12 +59,13 @@ def BoostingSet(Reviews, Labels, Weights):
     NL = []
     NI = []
     size = len(Reviews)
-    ep = 0.000001
+    max_size = len(Reviews)
     #print(Weights)
+
     print("Generating Boosting Set")
-    while len(NI) < size:
+    while len(NI) < max_size:
         for i in range(0, len(Weights)):
-            temp = random.uniform(0, (1.0 / size)*(1+ep))
+            temp = random.uniform(0, 1.0 / size)
             if (temp < Weights[i]):
                 NI.append(i)
         
@@ -74,7 +78,35 @@ def BoostingSet(Reviews, Labels, Weights):
     
     return NR, NL
 
-def AdaBoost(X, Y, TX, algorithm='SVM', num=3, TreeDepth=1000):
+def ExtendBoostingSet(Reviews, Lables, Weights,time):
+    Weights = unify(Weights)
+    
+    NR = []
+    NL = []
+    NI = []
+    size = len(Reviews)
+    max_size = time * len(Reviews)
+
+    print("Generating Boosting Set")
+    for i in range(0, len(Reviews)):
+        NI.append(i)
+        
+    while(len(NI) < max_size):
+        for i in range(0, len(Weights)):
+            temp = random.uniform(0, 1.0 / size)
+            if (temp < Weights[i]):
+                NI.append(i)
+
+    random.shuffle(NI)
+
+    print("BoostingSet Size: %d"%(len(NI)))
+    for i in NI:
+        NR.append(Reviews[i])
+        NL.append(Lables[i])
+
+    return NR,NL
+
+def AdaBoost(X, Y, TX, algorithm='SVM', num=3, TreeDepth=1000, manner='Weighted', times=2):
     BA = []
     BB = []
     Ans = []
@@ -102,16 +134,29 @@ def AdaBoost(X, Y, TX, algorithm='SVM', num=3, TreeDepth=1000):
     for i in range(0, num):
         print("Translate AdaBoost Iteration No.%d"%(i+1))
         #print(SW)
-        if (algorithm == 'SVM'):
+        if (manner == 'EqualSample'):
             NX,NY = BoostingSet(X, Y, SW)
+        if (manner == 'ExtendSample'):
+            NX,NY = ExtendBoostingSet(X, Y, SW, times)
         #print(SW)
         #Train Weighted Classifier
         clf = None
         if (algorithm == 'SVM'):
+            if (manner == 'Weighted'):
+                print("Error! SVM can not use weighted method")
+                return
             clf = SVM(NX, NY)
-        else:
-            clf = DTree(X, Y, SW, TreeDepth)
-        
+        if (algorithm == 'DTree'):
+            if (manner == 'Weighted'):
+                clf = DTree(X, Y, SW, TreeDepth)
+            else:
+                clf = DTree(NX, NY, None, TreeDepth)
+        if (algorithm == 'KNN'):
+            if (manner == 'Weighted'):
+                print("Error! KNN can not use weighted method")
+                return
+            clf = KNN(NX,NY)
+
         #Make a prediction
         LA = clf.predict(X)
         
@@ -133,7 +178,7 @@ def AdaBoost(X, Y, TX, algorithm='SVM', num=3, TreeDepth=1000):
             
 
         if (error_rate > 0.5):
-            print("Warning! A bad signal classifier arise. abort the loop")
+            print("Warning! A bad classifier arise. abort the loop")
             num = i
             break
 
@@ -162,33 +207,50 @@ def AdaBoost(X, Y, TX, algorithm='SVM', num=3, TreeDepth=1000):
 
     return Ans
 
-if __name__ == "__main__":
-    dic_path = sys.argv[1]
-    train_path = sys.argv[2]
-    test_path = sys.argv[3]
-    algorithm = sys.argv[4]
-    n = int(sys.argv[5])
-    ensemble = sys.argv[6]
-    mode = sys.argv[7]
-    
-    sys_num = 7
-    if (mode == 'test'):
-        sys_num += 1
-        output_file = sys.argv[sys_num]
-    train_num = -1 #-1 means take all sample to train (including the validation set)
-    val_num = 500
-    
-    if (mode == 'validation'):
-        sys_num += 1
-        train_num = int(sys.argv[sys_num])
-        sys_num += 1
-        val_num = int(sys.argv[sys_num])
-    tree_depth = 1000
-    
-    if (algorithm == 'DTree'):
-        sys_num += 1
-        tree_depth = int(sys.argv[sys_num])
 
+
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('DictionaryPath', help = 'The dictionary path to embedding')
+    parser.add_argument('TrainPath', help = 'The Training Set path')
+    parser.add_argument('TestPath', help = 'The Testing Set path')
+    parser.add_argument('OutputPath', help = 'The Output path')
+    parser.add_argument('-a', '--algorithm', default='DTree', choices=['SVM','DTree','KNN'], help = 'Using which kind of Algorithm to train(We support SVM, DTree, KNN and defualt is DTree)')
+    parser.add_argument('-n', '--num' ,type=int, default=20, help = 'The num of weaker classifier\'s num, the default is 20')
+    parser.add_argument('-e', '--ensemble', default='Bagging', choices=['Bagging','Boosting'], help = 'Using which kind of ensemble Algorithm to train(We support Bagging, Boosting and default is Bagging')
+    parser.add_argument('-d', '--max_deep', type = int, default=100, help = 'The Max Deep for DTree in Boosting')
+    parser.add_argument('-v', '--validation', help = 'Turn validation mode on', action = 'store_true')
+    parser.add_argument('-b', '--boosting_method', default='Weighted',choices=['Weighted','EqualSample','ExtendSample'], help = 'boosting method including Weighted, EqualSample, ExtendSample NOTICE: SVM can not use Weighted method!')
+    parser.add_argument('--extend_time', type = int, default=2, help = 'The Extended time for ExtendSample Method, default is 2 times')
+    parser.add_argument('--validation_train_num', type = int, default=20000, help = '(Under validation mode) The train set size, default is 200000')
+    parser.add_argument('--validation_test_num', type = int, default=1000, help = '(Undervalidation mode) The validation set size, default is 1000')
+
+    args = parser.parse_args()
+    
+    dic_path = args.DictionaryPath
+    train_path = args.TrainPath
+    test_path = args.TestPath
+    output_path = args.OutputPath
+
+    algorithm = args.algorithm
+    n = args.num
+    ensemble = args.ensemble
+    tree_depth = args.max_deep
+
+    train_num = -1 #-1 means take all sample to train (including the validation set)
+    val_num = 1000
+    
+    boosting_method = args.boosting_method
+    extend_time = args.extend_time
+
+    if args.validation:
+        train_num = args.validation_train_num
+        val_num = args.validation_test_num
+    
+    
     ts = 0     #train set start
     te = train_num    #train set end
     
@@ -199,32 +261,30 @@ if __name__ == "__main__":
     TX = []
     TY = []
     
-    if (mode == 'validation'):
+    if args.validation:
         SP = te - val_num #Split Point
         assert(SP < te)
         TX = X[SP:-1]
         V_Y = Y[SP:-1]
         X = X[0:SP]
         Y = Y[0:SP]
-    if (mode == 'test'):
+    else:
         TX = LoadTestData(test_path, Dic)
         
     Ans = []
+    
     if (ensemble == "Bagging"):
         Ans = Bagging(X, Y, TX, algorithm, n)
     if (ensemble == "Boosting"):
-        Ans = AdaBoost(X, Y, TX, algorithm, n, tree_depth)
+        Ans = AdaBoost(X, Y, TX, algorithm, n, tree_depth, boosting_method, extend_time)
     
-    if (mode == 'validation'):
+    if args.validation:
         rate, rmse = validate(Ans, V_Y)
-        #print("Answer:")
-        #print(Ans)
         print("Correct Rate: %s, RMSE: %s"%(str(rate), str(rmse)))
-    
-    if (mode == 'test'):
+    else:
         Final = []
         tot = len(Ans)
         for i in range(1, tot+1):
             Final.append([i,Ans[i - 1]])
-        pd.DataFrame(Final, columns = ['id','label']).to_csv(output_file)
+        pd.DataFrame(Final, columns = ['id','label']).to_csv(output_path)
 
