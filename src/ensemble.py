@@ -219,7 +219,7 @@ if __name__ == "__main__":
     parser.add_argument('TestPath', help = 'The Testing Set path')
     parser.add_argument('OutputPath', help = 'The Output path')
     parser.add_argument('-a', '--algorithm', default='DTree', choices=['SVM','DTree','KNN'], help = 'Using which kind of Algorithm to train(We support SVM, DTree, KNN and defualt is DTree)')
-    parser.add_argument('-n', '--num' ,type=int, default=20, help = 'The num of weaker classifier\'s num, the default is 20')
+    parser.add_argument('-n', '--num' ,type=int, default=50, help = 'The num of weaker classifier\'s num, the default is 50')
     parser.add_argument('-e', '--ensemble', default='Bagging', choices=['Bagging','Boosting'], help = 'Using which kind of ensemble Algorithm to train(We support Bagging, Boosting and default is Bagging')
     parser.add_argument('-d', '--max_deep', type = int, default=100, help = 'The Max Deep for DTree in Boosting')
     parser.add_argument('-v', '--validation', help = 'Turn validation mode on', action = 'store_true')
